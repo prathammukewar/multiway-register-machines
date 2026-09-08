@@ -18,6 +18,9 @@ const RULE_COLOR_SLOTS = 8;
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
+/** What the pointer is over in the SVG view. */
+export type HoverTarget = { kind: "node"; id: number } | { kind: "edge"; index: number };
+
 interface ViewData {
   evolution: EvolutionJson;
   positions: Map<number, [number, number]>;
@@ -46,10 +49,12 @@ export class GraphView {
   private canvas: HTMLCanvasElement | null = null;
   private fitUsedFallback = false;
   private userMoved = false;
+  private focusRule: string | null = null;
 
   constructor(
     private root: HTMLElement,
     private onSelect: (node: number | null) => void,
+    private onHover: (target: HoverTarget | null, event: MouseEvent) => void = () => {},
   ) {
     this.attachPanZoom();
     new ResizeObserver(() => {
@@ -115,6 +120,17 @@ export class GraphView {
   setBranchial(edges: [number, number][]): void {
     this.branchialEdges = edges;
     this.rebuild();
+  }
+
+  get selectedNode(): number | null {
+    return this.selected;
+  }
+
+  /** Emphasize one rule's arrows and fade the rest; null restores. */
+  highlightRule(rule: string | null): void {
+    if (this.focusRule === rule) return;
+    this.focusRule = rule;
+    this.refresh();
   }
 
   select(node: number | null): void {
@@ -374,11 +390,17 @@ export class GraphView {
       group.dataset["src"] = String(src);
       group.dataset["dst"] = String(dst);
       group.dataset["idx"] = String(edgeIndex);
+      group.dataset["rule"] = rule;
+      const d = this.edgePath(from, to, src, dst);
       const path = document.createElementNS(SVG_NS, "path");
-      path.setAttribute("d", this.edgePath(from, to, src, dst));
+      path.setAttribute("d", d);
       path.classList.add("edge-line");
       path.setAttribute("marker-end", "url(#ge-arrow)");
-      group.append(path);
+      // A wide invisible twin so a thin arrow is easy to hover.
+      const hit = document.createElementNS(SVG_NS, "path");
+      hit.setAttribute("d", d);
+      hit.classList.add("edge-hit");
+      group.append(path, hit);
       const label = document.createElementNS(SVG_NS, "text");
       label.textContent = rule;
       label.classList.add("edge-label");
@@ -473,8 +495,42 @@ export class GraphView {
 
     svg.append(viewport);
     svg.addEventListener("click", () => this.select(null));
+    svg.addEventListener("mouseover", (event) => {
+      const target = event.target as Element;
+      const node = target.closest("g.node");
+      if (node instanceof SVGGElement) {
+        const id = Number(node.dataset["id"]);
+        this.markAdjacent(id);
+        this.onHover({ kind: "node", id }, event);
+        return;
+      }
+      const edge = target.closest("g.edge");
+      if (edge instanceof SVGGElement) {
+        this.onHover({ kind: "edge", index: Number(edge.dataset["idx"]) }, event);
+      }
+    });
+    svg.addEventListener("mouseout", (event) => {
+      const from = (event.target as Element).closest("g.node, g.edge");
+      const related = event.relatedTarget as Element | null;
+      const to = related?.closest?.("g.node, g.edge") ?? null;
+      if (from && from !== to) {
+        this.markAdjacent(null);
+        this.onHover(null, event);
+      }
+    });
     this.root.append(svg);
     this.svg = svg;
+  }
+
+  /** Brighten the arrows into and out of the hovered chip. */
+  private markAdjacent(id: number | null): void {
+    if (!this.svg) return;
+    for (const edge of this.svg.querySelectorAll("g.edge.adjacent")) {
+      edge.classList.remove("adjacent");
+    }
+    if (id === null) return;
+    const selector = `g.edge[data-src="${id}"], g.edge[data-dst="${id}"]`;
+    for (const edge of this.svg.querySelectorAll(selector)) edge.classList.add("adjacent");
   }
 
   private buildCanvas(): void {
@@ -502,6 +558,8 @@ export class GraphView {
     const { x, y, k } = this.transform;
     viewport.setAttribute("transform", `translate(${x}, ${y}) scale(${k})`);
     this.svg.classList.toggle("labels-hidden", k < LABEL_ZOOM);
+    const focusing = this.focusRule !== null;
+    this.svg.classList.toggle("rule-focus", focusing);
     const dimming = this.selected !== null;
     for (const element of viewport.querySelectorAll<SVGGElement>("g.node")) {
       const id = Number(element.dataset["id"]);
@@ -527,6 +585,10 @@ export class GraphView {
           (this.descendants.has(src) || src === this.selected));
       element.classList.toggle("dimmed", dimming && !related);
       element.classList.toggle("pathline", this.pathEdges.has(index));
+      element.classList.toggle(
+        "focus-rule",
+        focusing && element.dataset["rule"] === this.focusRule,
+      );
     }
   }
 
@@ -621,6 +683,7 @@ function exportStyles(): string {
     ".terminal-halt .chip, .terminal-stuck .chip { fill: #fcecc8; stroke: #b97f00; }",
     ".terminal-halt .badge, .terminal-stuck .badge { fill: #b97f00; }",
     ".edge-line { fill: none; stroke: #9a9994; stroke-width: 1.3; }",
+    ".edge-hit { fill: none; stroke: none; }",
     ".arrowhead { fill: #9a9994; }",
     ".rule-0 .edge-line { stroke: #2a78d6; } .rule-1 .edge-line { stroke: #eb6834; }",
     ".rule-2 .edge-line { stroke: #1baf7a; } .rule-3 .edge-line { stroke: #c98500; }",

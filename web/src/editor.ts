@@ -3,12 +3,34 @@
  * JSON document:
  *   guard    "r1>0 & r2%2==1"     (comparisons: > >= == < and r%k==c)
  *   updates  "r1-=1, r2+=2"
+ * Each rule row carries a color dot matching its arrows in the graph, and
+ * hovering a row asks the app to light those arrows up.
  */
 
+import { describeRule } from "./describe.js";
 import type { ConditionJson, MachineDoc, RuleJson, UpdateJson } from "./types.js";
 
 const GUARD_ATOM = /^r(\d+)\s*(?:%\s*(\d+)\s*==\s*(\d+)|(>=|==|<|>)\s*(\d+))$/;
 const UPDATE_ATOM = /^r(\d+)\s*([+-]=)\s*(\d+)$/;
+
+const MACHINE_TIPS = {
+  registers: "How many registers the machine has. Every register starts at the value below.",
+  pc: "The program counter the run starts from. Rules fire from the pc they are attached to.",
+  initial: "Starting register values, comma separated, one per register.",
+  halt: "Program counters that end the run. A state at one of these is drawn in gold.",
+};
+
+const COLUMN_TIPS: Record<string, string> = {
+  id: "A name for the rule. It labels the arrows in the graph and the legend.",
+  from: "The rule can only fire when the program counter equals this.",
+  guard:
+    "Conditions on the registers, all of which must hold. Write r1>0 & r2%2==1. " +
+    "Leave it empty for a rule that always applies.",
+  updates:
+    "What the rule does to the registers, like r1-=1, r2+=2. Registers never go below zero, " +
+    "so guard a decrement with r>0.",
+  to: "Where the program counter goes after the rule fires.",
+};
 
 export function formatGuard(guard: ConditionJson[]): string {
   return guard
@@ -59,6 +81,7 @@ export function parseUpdates(text: string): UpdateJson[] {
 
 export interface EditorCallbacks {
   onChange(): void;
+  onHoverRule(id: string | null): void;
 }
 
 /** Renders and maintains the rule table plus the machine-level inputs.
@@ -68,6 +91,8 @@ export class MachineEditor {
   private doc: MachineDoc;
   private rowErrors = new Map<number, string>();
   private serverProblems: string[] = [];
+  private ruleSlots = new Map<string, number>();
+  private renderQueued = false;
 
   constructor(
     private root: HTMLElement,
@@ -91,6 +116,15 @@ export class MachineEditor {
   setProblems(problems: string[]): void {
     this.serverProblems = problems;
     this.render();
+  }
+
+  /** Recolor the dots without rebuilding the table, so typing is undisturbed. */
+  setRuleColors(slots: Map<string, number>): void {
+    this.ruleSlots = slots;
+    for (const dot of this.root.querySelectorAll<HTMLElement>(".rule-dot")) {
+      const rule = dot.dataset["rule"] ?? "";
+      dot.className = `rule-dot ${dotClass(this.ruleSlots.get(rule))}`;
+    }
   }
 
   private input(
@@ -119,11 +153,27 @@ export class MachineEditor {
     } catch (error) {
       this.rowErrors.set(index, error instanceof Error ? error.message : String(error));
     }
-    this.render();
+    this.queueRender();
+  }
+
+  /** Re-render after the browser finishes moving focus, then put focus back
+   * on the matching field so Tab keeps working through the table. */
+  private queueRender(): void {
+    if (this.renderQueued) return;
+    this.renderQueued = true;
+    window.setTimeout(() => {
+      this.renderQueued = false;
+      this.render();
+    }, 0);
   }
 
   render(): void {
     const doc = this.doc;
+    const active = window.document.activeElement;
+    const activeLabel =
+      active instanceof HTMLElement && this.root.contains(active)
+        ? active.getAttribute("aria-label")
+        : null;
     this.root.replaceChildren();
 
     const machineRow = window.document.createElement("div");
@@ -131,6 +181,7 @@ export class MachineEditor {
     machineRow.append(
       labeled(
         "Registers",
+        MACHINE_TIPS.registers,
         this.input(String(doc.n_registers), "Register count", (text) => {
           const count = Number(text);
           if (!Number.isInteger(count) || count < 1) return;
@@ -138,11 +189,12 @@ export class MachineEditor {
           const [pc, regs] = doc.initial ?? [1, []];
           doc.initial = [pc, resize(regs, count)];
           this.callbacks.onChange();
-          this.render();
+          this.queueRender();
         }, { size: 3, numeric: true }),
       ),
       labeled(
         "Initial pc",
+        MACHINE_TIPS.pc,
         this.input(String(doc.initial?.[0] ?? 1), "Initial program counter", (text) => {
           const pc = Number(text);
           if (!Number.isInteger(pc) || pc < 1) return;
@@ -152,6 +204,7 @@ export class MachineEditor {
       ),
       labeled(
         "Initial registers",
+        MACHINE_TIPS.initial,
         this.input(
           (doc.initial?.[1] ?? []).join(", "),
           "Initial register values, comma separated",
@@ -166,6 +219,7 @@ export class MachineEditor {
       ),
       labeled(
         "Halt pcs",
+        MACHINE_TIPS.halt,
         this.input(doc.halt_pcs.join(", "), "Halting program counters", (text) => {
           const values = text
             .split(",")
@@ -184,14 +238,35 @@ export class MachineEditor {
     table.className = "rule-table";
     table.createCaption().textContent = "Rules";
     const head = table.createTHead().insertRow();
-    for (const title of ["id", "from", "guard", "updates", "to", ""]) {
+    for (const title of ["", "id", "from", "guard", "updates", "to", ""]) {
       const cell = window.document.createElement("th");
       cell.textContent = title;
+      const tip = COLUMN_TIPS[title];
+      if (tip) {
+        cell.dataset["tip"] = tip;
+        cell.tabIndex = 0;
+      }
       head.append(cell);
     }
     const body = table.createTBody();
     doc.rules.forEach((rule, index) => {
       const row = body.insertRow();
+      row.className = "rule-row";
+      row.addEventListener("mouseenter", () => this.callbacks.onHoverRule(rule.id));
+      row.addEventListener("mouseleave", () => this.callbacks.onHoverRule(null));
+      row.addEventListener("focusin", () => this.callbacks.onHoverRule(rule.id));
+      row.addEventListener("focusout", () => this.callbacks.onHoverRule(null));
+
+      const dot = window.document.createElement("span");
+      dot.className = `rule-dot ${dotClass(this.ruleSlots.get(rule.id))}`;
+      dot.dataset["rule"] = rule.id;
+      dot.dataset["tipTitle"] = rule.id;
+      dot.dataset["tip"] = describeRule(rule);
+      dot.tabIndex = 0;
+      dot.setAttribute("role", "img");
+      dot.setAttribute("aria-label", `Color of rule ${rule.id} in the graph`);
+      row.insertCell().append(dot);
+
       row.insertCell().append(
         this.input(rule.id, `Rule ${index + 1} id`, (text) =>
           this.applyRowEdit(index, (r) => {
@@ -224,10 +299,13 @@ export class MachineEditor {
           }), { size: 3, numeric: true }),
       );
       const remove = window.document.createElement("button");
+      remove.type = "button";
       remove.textContent = "delete";
       remove.setAttribute("aria-label", `Delete rule ${rule.id}`);
+      remove.dataset["tip"] = "Remove this rule. The graph re-runs without it.";
       remove.addEventListener("click", () => {
         doc.rules.splice(index, 1);
+        this.callbacks.onHoverRule(null);
         this.callbacks.onChange();
         this.render();
       });
@@ -240,7 +318,7 @@ export class MachineEditor {
         const errorRow = body.insertRow();
         errorRow.className = "rule-error";
         const cell = errorRow.insertCell();
-        cell.colSpan = 6;
+        cell.colSpan = 7;
         cell.textContent = problem;
       }
     });
@@ -250,11 +328,15 @@ export class MachineEditor {
     hint.className = "muted small hint";
     hint.textContent =
       "Guards look like r1>0 & r2%2==1 and updates like r1-=1, r2+=2. " +
-      "A rule with no guard always applies.";
+      "A rule with no guard always applies. Hover a color dot to read the rule in words.";
     this.root.append(hint);
 
     const addButton = window.document.createElement("button");
+    addButton.type = "button";
+    addButton.className = "quiet";
     addButton.textContent = "add rule";
+    addButton.dataset["tip"] =
+      "Append an empty rule at pc 1 that jumps to pc 1. Edit its fields to make it do something.";
     addButton.addEventListener("click", () => {
       const used = new Set(doc.rules.map((r) => r.id));
       let n = doc.rules.length + 1;
@@ -262,6 +344,8 @@ export class MachineEditor {
       doc.rules.push({ id: `r${n}`, pc_from: 1, guard: [], updates: [], pc_to: 1 });
       this.callbacks.onChange();
       this.render();
+      const rows = this.root.querySelectorAll<HTMLInputElement>(".rule-row input");
+      rows[rows.length - 5]?.focus();
     });
     this.root.append(addButton);
 
@@ -275,14 +359,28 @@ export class MachineEditor {
       box.textContent = general.join("; ");
       this.root.append(box);
     }
+
+    if (activeLabel) {
+      const again = this.root.querySelector<HTMLElement>(`[aria-label="${cssEscape(activeLabel)}"]`);
+      again?.focus({ preventScroll: true });
+    }
   }
 }
 
-function labeled(text: string, control: HTMLElement): HTMLLabelElement {
+function dotClass(slot: number | undefined): string {
+  return slot !== undefined && slot >= 0 ? `rule-${slot}` : "rule-none";
+}
+
+function cssEscape(text: string): string {
+  return typeof CSS !== "undefined" && CSS.escape ? CSS.escape(text) : text.replace(/"/g, '\\"');
+}
+
+function labeled(text: string, tip: string, control: HTMLElement): HTMLLabelElement {
   const label = window.document.createElement("label");
   const span = window.document.createElement("span");
   span.textContent = text;
   label.append(span, control);
+  label.dataset["tip"] = tip;
   return label;
 }
 

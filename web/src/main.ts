@@ -1,11 +1,14 @@
 /** Application wiring: presets, editor, engine worker, graph view, stats,
- * URL state, playback, and exports. */
+ * URL state, playback, tooltips, the walkthrough, and exports. */
 
 import { EngineClient, type EngineStage } from "./api.js";
+import { describeRule, describeTerminal, plural, registersText } from "./describe.js";
 import { MachineEditor } from "./editor.js";
-import { GraphView } from "./graphview.js";
+import { GraphView, type HoverTarget } from "./graphview.js";
 import { StatsPane } from "./stats.js";
-import type { AppState, MachineDoc, PresetInfo, RunOk, RunParams } from "./types.js";
+import { Tooltip } from "./tooltip.js";
+import { Tour, tourSeen } from "./tour.js";
+import type { AppState, MachineDoc, PresetInfo, RuleJson, RunOk, RunParams } from "./types.js";
 import { decodeState, writeStateToUrl } from "./urlstate.js";
 
 function element<T extends HTMLElement>(id: string): T {
@@ -22,11 +25,23 @@ const DEFAULT_PARAMS: RunParams = {
   analyze: true,
 };
 
+const LOADING_STAGES: EngineStage[] = ["loading-pyodide", "loading-engine", "working"];
+
+/** Lookups built once per run so hover cards are instant. */
+interface RunIndex {
+  layerOf: Map<number, number>;
+  incoming: Map<number, string[]>;
+  outgoing: Map<number, string[]>;
+  ruleById: Map<string, RuleJson>;
+}
+
 class App {
   private engine: EngineClient;
   private editor: MachineEditor;
   private view: GraphView;
   private stats: StatsPane;
+  private tooltip = new Tooltip();
+  private tour = new Tour();
   private presets: PresetInfo[] = [];
   private state: AppState = {
     doc: emptyDoc(),
@@ -34,23 +49,30 @@ class App {
     preset: null,
   };
   private lastRun: RunOk | null = null;
+  private index: RunIndex | null = null;
   private playTimer: number | null = null;
   private branchialOn = false;
+  private firstRunDone = false;
 
   constructor() {
     this.engine = new EngineClient(
       new URL("public/wheels/mrm.whl", document.baseURI).toString(),
       (stage, detail) => this.showStage(stage, detail),
     );
-    this.stats = new StatsPane(element("stats-body"));
-    this.view = new GraphView(element("graph-host"), (node) => {
-      if (this.lastRun) this.stats.show(this.lastRun, this.state.preset, node);
-    });
+    this.stats = new StatsPane(element("stats-body"), (node) => this.view.select(node));
+    this.view = new GraphView(
+      element("graph-host"),
+      (node) => {
+        if (this.lastRun) this.stats.show(this.lastRun, this.state.preset, node);
+      },
+      (target, event) => this.showGraphTip(target, event),
+    );
     this.editor = new MachineEditor(element("editor-host"), this.state.doc, {
       onChange: () => {
         this.state.preset = this.state.preset === "custom" ? "custom" : null;
         void this.runAndRender();
       },
+      onHoverRule: (id) => this.view.highlightRule(id),
     });
   }
 
@@ -94,11 +116,16 @@ class App {
   private fillPresetDropdown(): void {
     const select = element<HTMLSelectElement>("preset-select");
     select.replaceChildren();
+    const edited = document.createElement("option");
+    edited.value = "";
+    edited.textContent = "edited machine";
+    edited.disabled = true;
+    edited.hidden = true;
+    select.append(edited);
     for (const preset of this.presets) {
       const option = document.createElement("option");
       option.value = preset.id;
       option.textContent = preset.name;
-      option.title = preset.description;
       select.append(option);
     }
     select.addEventListener("change", () => void this.loadPreset(select.value));
@@ -132,6 +159,7 @@ class App {
   async runAndRender(): Promise<void> {
     this.readParamInputs();
     this.stopPlayback();
+    this.tooltip.hide();
     void writeStateToUrl(this.state);
     const result = await this.engine
       .run(JSON.stringify(this.state.doc), this.state.params)
@@ -146,13 +174,15 @@ class App {
     if (!result) return;
     if (!result.ok) {
       this.editor.setProblems(result.problems);
-      this.stats.clear("Fix the highlighted problems and rerun.");
+      this.stats.clear("Fix the highlighted problems and the graph will come back.");
       return;
     }
     this.editor.setProblems([]);
     this.lastRun = result;
+    this.index = buildIndex(result);
     this.renderDiagrams(result);
     this.view.setEvolution(result.evolution, result.layout);
+    this.editor.setRuleColors(this.view.ruleColors());
     this.renderRuleLegend();
     this.stats.show(result, this.state.preset, null);
     this.renderTable(result);
@@ -167,7 +197,7 @@ class App {
         max_frontier: "max frontier",
       }[evolution.truncation_reason ?? ""];
       this.showBanner(
-        `Truncated by ${evolution.truncation_reason}: this is a prefix of the` +
+        `Stopped early by the ${knob ?? "caps"} setting: this is the start of the` +
           ` evolution, not all of it. Raise ${knob ?? "the caps"} to see more.`,
         "warning",
       );
@@ -175,6 +205,52 @@ class App {
       this.hideBanner();
     }
     element("canvas-note").hidden = !this.view.usingCanvas;
+
+    if (!this.firstRunDone) {
+      this.firstRunDone = true;
+      this.hideOverlay();
+      if (!tourSeen()) window.setTimeout(() => this.tour.start(), 400);
+    }
+  }
+
+  private showGraphTip(target: HoverTarget | null, event: MouseEvent): void {
+    if (!target || !this.lastRun || !this.index) {
+      this.tooltip.hide();
+      return;
+    }
+    const evolution = this.lastRun.evolution;
+    if (target.kind === "node") {
+      const node = evolution.nodes.find(([id]) => id === target.id);
+      if (!node) return;
+      const [id, pc, registers] = node;
+      const step = this.index.layerOf.get(id) ?? 0;
+      const incoming = this.index.incoming.get(id) ?? [];
+      const outgoing = this.index.outgoing.get(id) ?? [];
+      const lines = [`pc ${pc}, ${registersText(registers)}`];
+      const inText = incoming.length
+        ? `${plural(incoming.length, "arrow")} in (${[...new Set(incoming)].join(", ")})`
+        : "the start";
+      const outText = outgoing.length
+        ? `${plural(outgoing.length, "arrow")} out`
+        : "no arrows out";
+      lines.push(`${inText}, ${outText}`);
+      const terminal = describeTerminal(evolution.terminals[String(id)]);
+      if (terminal) lines.push(terminal);
+      lines.push(
+        this.view.selectedNode === id
+          ? "Click again to clear the selection."
+          : "Click to trace where it came from and where it leads.",
+      );
+      this.tooltip.showAt(event.clientX, event.clientY, `state ${id}, step ${step}`, lines);
+      return;
+    }
+    const edge = evolution.edges[target.index];
+    if (!edge) return;
+    const [src, dst, ruleId] = edge;
+    const rule = this.index.ruleById.get(ruleId);
+    const lines = [rule ? describeRule(rule) : "Rule details are not available."];
+    lines.push(src === dst ? `state ${src} loops back to itself` : `state ${src} to state ${dst}`);
+    this.tooltip.showAt(event.clientX, event.clientY, `rule ${ruleId}`, lines);
   }
 
   private setupSlider(result: RunOk): void {
@@ -238,17 +314,28 @@ class App {
     legend.replaceChildren();
     const colors = this.view.ruleColors();
     let overflow = 0;
-    for (const [rule, slot] of colors) {
+    for (const [ruleId, slot] of colors) {
       if (slot < 0) {
         overflow += 1;
         continue;
       }
       const item = document.createElement("li");
+      item.className = "legend-rule";
+      item.tabIndex = 0;
+      const rule = this.index?.ruleById.get(ruleId);
+      item.dataset["tipTitle"] = ruleId;
+      item.dataset["tip"] = rule ? describeRule(rule) : "";
       const swatch = document.createElement("span");
       swatch.className = `swatch rule-${slot}`;
       const code = document.createElement("code");
-      code.textContent = rule;
+      code.textContent = ruleId;
       item.append(swatch, code);
+      const light = () => this.view.highlightRule(ruleId);
+      const unlight = () => this.view.highlightRule(null);
+      item.addEventListener("mouseenter", light);
+      item.addEventListener("mouseleave", unlight);
+      item.addEventListener("focus", light);
+      item.addEventListener("blur", unlight);
       legend.append(item);
     }
     if (overflow) {
@@ -256,6 +343,7 @@ class App {
       const swatch = document.createElement("span");
       swatch.className = "swatch";
       item.append(swatch, `${overflow} more rules in gray`);
+      item.dataset["tip"] = "Only the first eight rules get their own color.";
       legend.append(item);
     }
     legend.hidden = colors.size === 0 || this.view.usingCanvas;
@@ -318,6 +406,25 @@ class App {
     this.view.fitView();
   }
 
+  clearSelection(): boolean {
+    if (this.view.selectedNode === null) return false;
+    this.view.select(null);
+    return true;
+  }
+
+  startTour(): void {
+    this.tooltip.hide();
+    this.tour.start();
+  }
+
+  get tourRunning(): boolean {
+    return this.tour.running;
+  }
+
+  hideTooltip(): void {
+    this.tooltip.hide();
+  }
+
   nudgeStep(delta: number): void {
     const slider = element<HTMLInputElement>("step-slider");
     const next = Number(slider.value) + delta;
@@ -330,29 +437,35 @@ class App {
     const host = element("table-host");
     host.replaceChildren();
     const table = document.createElement("table");
-    table.createCaption().textContent = "States (text view)";
+    table.createCaption().textContent = "States (text view). Click a row to select it.";
     const head = table.createTHead().insertRow();
-    for (const title of ["id", "layer", "pc", "registers", "terminal"]) {
+    for (const title of ["id", "step", "pc", "registers", "terminal"]) {
       const cell = document.createElement("th");
       cell.textContent = title;
       head.append(cell);
     }
-    const layerOf = new Map<number, number>();
-    result.evolution.layers.forEach((layer, index) => {
-      for (const node of layer) layerOf.set(node, index);
-    });
     const body = table.createTBody();
     for (const [id, pc, registers] of result.evolution.nodes.slice(0, 500)) {
       const row = body.insertRow();
+      row.tabIndex = 0;
+      row.className = "state-row";
       for (const value of [
         id,
-        layerOf.get(id) ?? "",
+        this.index?.layerOf.get(id) ?? "",
         pc,
         registers.join(", "),
         result.evolution.terminals[String(id)] ?? "",
       ]) {
         row.insertCell().textContent = String(value);
       }
+      const pick = () => this.view.select(this.view.selectedNode === id ? null : id);
+      row.addEventListener("click", pick);
+      row.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          pick();
+        }
+      });
     }
     host.append(table);
     if (result.evolution.nodes.length > 500) {
@@ -365,17 +478,43 @@ class App {
 
   private showStage(stage: EngineStage, detail?: string): void {
     const overlay = element("engine-status");
-    const messages: Record<EngineStage, string> = {
-      "loading-pyodide": "Loading Python runtime (about 6 MB, cached after the first visit)",
-      "loading-engine": "Installing the mrm engine wheel",
-      ready: "",
-      working: "Evolving",
-      failed: `Engine failed: ${detail ?? "unknown error"}`,
-    };
-    const text = messages[stage];
-    overlay.hidden = text === "";
-    overlay.textContent = text;
+    const busy = element("engine-busy");
+    const runButton = element<HTMLButtonElement>("run-button");
+    const cancelButton = element<HTMLButtonElement>("cancel-button");
+    const working = stage === "working";
+    runButton.disabled = working;
+    runButton.textContent = working ? "running" : "run";
+    cancelButton.disabled = !working;
+    busy.hidden = !working || !this.firstRunDone;
+
+    if (stage === "ready" && this.firstRunDone) {
+      overlay.hidden = true;
+      return;
+    }
+    if (stage === "ready") return;
+    if (working && this.firstRunDone) return;
+
+    overlay.hidden = false;
     overlay.classList.toggle("error", stage === "failed");
+    const title = element("loading-title");
+    const note = element("loading-detail");
+    if (stage === "failed") {
+      title.textContent = "The engine could not start";
+      note.textContent = detail ?? "unknown error";
+      return;
+    }
+    title.textContent = working ? "Almost there" : "Starting the engine";
+    note.textContent = "";
+    const position = LOADING_STAGES.indexOf(stage);
+    for (const item of overlay.querySelectorAll<HTMLElement>("[data-stage]")) {
+      const own = LOADING_STAGES.indexOf(item.dataset["stage"] as EngineStage);
+      item.classList.toggle("done", own < position);
+      item.classList.toggle("active", own === position);
+    }
+  }
+
+  private hideOverlay(): void {
+    element("engine-status").hidden = true;
   }
 
   private showBanner(text: string, kind: "warning" | "error"): void {
@@ -412,6 +551,28 @@ class App {
     const blob = await this.view.exportPng();
     if (blob) downloadBlob(blob, "evolution.png");
   }
+}
+
+function buildIndex(result: RunOk): RunIndex {
+  const evolution = result.evolution;
+  const layerOf = new Map<number, number>();
+  evolution.layers.forEach((layer, index) => {
+    for (const node of layer) layerOf.set(node, index);
+  });
+  const incoming = new Map<number, string[]>();
+  const outgoing = new Map<number, string[]>();
+  for (const [src, dst, rule] of evolution.edges) {
+    push(incoming, dst, rule);
+    push(outgoing, src, rule);
+  }
+  const ruleById = new Map(evolution.machine.rules.map((rule) => [rule.id, rule]));
+  return { layerOf, incoming, outgoing, ruleById };
+}
+
+function push(map: Map<number, string[]>, key: number, value: string): void {
+  const list = map.get(key);
+  if (list) list.push(value);
+  else map.set(key, [value]);
 }
 
 function emptyDoc(): MachineDoc {
@@ -452,6 +613,9 @@ function downloadBlob(blob: Blob, filename: string): void {
 const app = new App();
 element("run-button").addEventListener("click", () => void app.runAndRender());
 element("cancel-button").addEventListener("click", () => app.cancel());
+for (const id of ["mode-select", "max-steps", "max-states", "max-frontier"]) {
+  element(id).addEventListener("change", () => void app.runAndRender());
+}
 element("play-button").addEventListener("click", () => app.togglePlayback());
 element<HTMLInputElement>("branchial-toggle").addEventListener("change", (event) => {
   void app.toggleBranchial((event.target as HTMLInputElement).checked);
@@ -460,6 +624,10 @@ element<HTMLInputElement>("table-toggle").addEventListener("change", (event) => 
   element("table-host").hidden = !(event.target as HTMLInputElement).checked;
 });
 element("copy-link").addEventListener("click", () => void app.copyLink());
+element("tour-button").addEventListener("click", (event) => {
+  event.preventDefault();
+  app.startTour();
+});
 element("import-button").addEventListener("click", () => element("import-file").click());
 element<HTMLInputElement>("import-file").addEventListener("change", (event) => {
   const file = (event.target as HTMLInputElement).files?.[0];
@@ -467,8 +635,17 @@ element<HTMLInputElement>("import-file").addEventListener("change", (event) => {
   (event.target as HTMLInputElement).value = "";
 });
 document.addEventListener("keydown", (event) => {
-  const target = event.target as HTMLElement;
-  if (target.closest("input, select, textarea, [contenteditable]")) return;
+  if (app.tourRunning) return;
+  const target = event.target instanceof HTMLElement ? event.target : null;
+  if (event.key === "Escape") {
+    if (target?.closest("input, select, textarea")) {
+      target.blur();
+      return;
+    }
+    app.clearSelection();
+    return;
+  }
+  if (target?.closest("input, select, textarea, [contenteditable]")) return;
   if (event.key === " ") {
     event.preventDefault();
     app.togglePlayback();
@@ -481,6 +658,8 @@ document.addEventListener("keydown", (event) => {
 element("zoom-in").addEventListener("click", () => app.zoom(1.25));
 element("zoom-out").addEventListener("click", () => app.zoom(0.8));
 element("zoom-fit").addEventListener("click", () => app.fit());
+element("graph-host").addEventListener("pointerdown", () => app.hideTooltip());
+element("graph-host").addEventListener("wheel", () => app.hideTooltip(), { passive: true });
 element("graph-host").addEventListener("keydown", (event) => {
   if (event.key === "+" || event.key === "=") app.zoom(1.25);
   else if (event.key === "-") app.zoom(0.8);
@@ -488,15 +667,6 @@ element("graph-host").addEventListener("keydown", (event) => {
   else return;
   event.preventDefault();
 });
-try {
-  const help = element<HTMLDetailsElement>("help");
-  help.open = localStorage.getItem("mrm-help-seen") !== "yes";
-  help.addEventListener("toggle", () => {
-    if (!help.open) localStorage.setItem("mrm-help-seen", "yes");
-  });
-} catch {
-  // Storage can be unavailable; the help panel simply stays at its default.
-}
 element("export-svg").addEventListener("click", () => app.downloadSvg());
 element("export-png").addEventListener("click", () => void app.downloadPng());
 element("export-json").addEventListener("click", () => app.downloadJson());
