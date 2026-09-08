@@ -5,8 +5,8 @@ type: software
 authors:
   - family-names: Mukewar
     given-names: Pratham
-repository-code: "https://github.com/MathMaster1296/multiway-register-machines"
-url: "https://mathmaster1296.github.io/multiway-register-machines/"
+repository-code: "https://github.com/prathammukewar/multiway-register-machines"
+url: "https://prathammukewar.github.io/multiway-register-machines/"
 license: MIT
 version: 0.1.0
 date-released: "2026-08-29"

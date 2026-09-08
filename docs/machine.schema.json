@@ -1,6 +1,6 @@
 {
  "$schema": "https://json-schema.org/draft/2020-12/schema",
- "$id": "https://github.com/MathMaster1296/multiway-register-machines/docs/machine.schema.json",
+ "$id": "https://github.com/prathammukewar/multiway-register-machines/docs/machine.schema.json",
  "title": "mrm/machine/1",
  "description": "A multiway register machine, optionally with a name, description, and initial configuration. Rules are authoritative; instructions, when present, are the WFR-style program the rules were compiled from.",
  "type": "object",

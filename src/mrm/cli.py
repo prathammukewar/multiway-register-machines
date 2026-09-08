@@ -287,7 +287,7 @@ def build_parser() -> argparse.ArgumentParser:
     link.add_argument("--max-frontier", type=int, default=10_000)
     link.add_argument(
         "--base",
-        default="https://mathmaster1296.github.io/multiway-register-machines/",
+        default="https://prathammukewar.github.io/multiway-register-machines/",
         help="explorer URL to link into",
     )
     link.set_defaults(func=_cmd_link)

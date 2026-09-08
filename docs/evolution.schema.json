@@ -1,6 +1,6 @@
 {
  "$schema": "https://json-schema.org/draft/2020-12/schema",
- "$id": "https://github.com/MathMaster1296/multiway-register-machines/docs/evolution.schema.json",
+ "$id": "https://github.com/prathammukewar/multiway-register-machines/docs/evolution.schema.json",
  "title": "mrm/evolution/1",
  "description": "A complete evolution result: the machine, the parameters that produced it, the node/edge/layer data, terminal classification, terminal path counts, growth series, truncation status, and a generator block tying the document to the package version and a hash of the machine.",
  "type": "object",

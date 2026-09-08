@@ -25,7 +25,7 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Repository = "https://github.com/MathMaster1296/multiway-register-machines"
+Repository = "https://github.com/prathammukewar/multiway-register-machines"
 
 [project.scripts]
 mrm = "mrm.cli:main"

@@ -9,7 +9,7 @@ Function Repository resource
 [MultiwayRegisterMachine](https://resources.wolframcloud.com/FunctionRepository/resources/MultiwayRegisterMachine/).
 
 The live explorer is at
-[mathmaster1296.github.io/multiway-register-machines](https://mathmaster1296.github.io/multiway-register-machines/).
+[prathammukewar.github.io/multiway-register-machines](https://prathammukewar.github.io/multiway-register-machines/).
 
 ![The Fibonacci states graph revealing itself step by step](docs/figures/fibonacci-reveal.svg)
 
@@ -69,7 +69,7 @@ halting, non-halting, and complete-graph examples.
 ## Install and use
 
 ```bash
-pip install git+https://github.com/MathMaster1296/multiway-register-machines
+pip install git+https://github.com/prathammukewar/multiway-register-machines
 ```
 
 ```python

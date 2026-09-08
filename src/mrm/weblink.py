@@ -21,7 +21,7 @@ from typing import Any
 
 from .serialize import MachineDocument, machine_to_json
 
-SITE = "https://mathmaster1296.github.io/multiway-register-machines/"
+SITE = "https://prathammukewar.github.io/multiway-register-machines/"
 
 
 def app_state(
