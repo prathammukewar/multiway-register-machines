@@ -27,6 +27,49 @@ const DEFAULT_PARAMS: RunParams = {
 
 const LOADING_STAGES: EngineStage[] = ["loading-pyodide", "loading-engine", "working"];
 
+/** `?embed` strips the page down to the graph for iframes in posts and notes. */
+const EMBED = new URLSearchParams(location.search).has("embed");
+
+/** One experiment worth trying for each preset, shown under its description. */
+const TRY_NEXT: Record<string, string> = {
+  grid_paths:
+    "Change both guards from <3 to <4 and the path count becomes C(8,4) = 70. Switch to " +
+    "tree mode to see all 20 paths drawn separately.",
+  fibonacci:
+    "Set the initial register to 10 and the paths to the base cases become F(10) = 55. " +
+    "Hover either rule to see how its arrows braid with the other's.",
+  collatz_reverse:
+    "Raise max steps to 120 and the tree reaches ten values. Every chip at pc 1 with an " +
+    "empty second register is a number whose Collatz trajectory ends at 1.",
+  collatz:
+    "Every chip is one interleaving of the 3n + 1 section and the halving section. Click " +
+    "one near the bottom to thicken the shortest route to it, then turn on branchial ties.",
+  collatz_forward:
+    "Set the second register to 6 and max steps to 250. The values 6, 3, 10, 5, 16, 8, 4, " +
+    "2, 1 then appear in register 2 at the odometer states: pc 8 with register 1 empty.",
+  fibonacci_paper:
+    "Raise max steps to 400 and read register 1 at each odometer state, pc 1 with " +
+    "registers 3 and 4 empty: 1, 1, 2, 3, 5, 8, 13.",
+  polynomial:
+    "Register 1 is the coefficient, register 2 is x, and register 5 is y. Raise max steps " +
+    "to 600, set y to 4, and the machine stops with 2·2⁴ + 2 = 34 in register 1.",
+  simple:
+    "The notebook's warm-up. Nothing ever halts here, so watch the growth chart instead: " +
+    "the frontier keeps widening step after step.",
+  complete_graph:
+    "Every instruction can jump to every other, so the control graph is complete. Open the " +
+    "program diagrams below the rules and the circle plot shows every pair joined.",
+  halting:
+    "Some branches get stuck (gold chips) while others run on. The statistics pane gives " +
+    "the exact odds that a uniformly random run halts, and when.",
+  non_halting:
+    "One changed fail branch, and nothing ever halts. Compare the halting probability " +
+    "with the halting machine's, then find the branch in the rules.",
+  custom:
+    "An editable copy of grid paths. Add a third register, or add a rule that jumps back " +
+    "to pc 1, and see what the path counts say about the cycle.",
+};
+
 /** Lookups built once per run so hover cards are instant. */
 interface RunIndex {
   layerOf: Map<number, number>;
@@ -101,6 +144,7 @@ class App {
     this.state.params.analyze = true;
     element<HTMLSelectElement>("preset-select").value = this.state.preset ?? "";
     element("preset-description").textContent = this.state.doc.description ?? "";
+    this.showTryHint(this.state.preset);
     this.editor.setDocument(this.state.doc);
     this.syncParamInputs();
   }
@@ -136,9 +180,29 @@ class App {
     this.state = { doc, params: { ...DEFAULT_PARAMS }, preset: id };
     element<HTMLSelectElement>("preset-select").value = id;
     element("preset-description").textContent = doc.description ?? "";
+    this.showTryHint(id);
     this.editor.setDocument(doc);
     this.syncParamInputs();
     await this.runAndRender();
+  }
+
+  private showTryHint(preset: string | null): void {
+    const hint = element("preset-try");
+    const text = preset ? TRY_NEXT[preset] : undefined;
+    hint.hidden = !text;
+    hint.replaceChildren();
+    if (!text) return;
+    const label = document.createElement("span");
+    label.className = "try-label";
+    label.textContent = "Try";
+    hint.append(label, text);
+  }
+
+  /** The embed view links back to the full page on the same state. */
+  private updateFullLink(): void {
+    const full = new URL(location.href);
+    full.search = "";
+    element<HTMLAnchorElement>("open-full").href = full.toString();
   }
 
   private syncParamInputs(): void {
@@ -160,7 +224,7 @@ class App {
     this.readParamInputs();
     this.stopPlayback();
     this.tooltip.hide();
-    void writeStateToUrl(this.state);
+    void writeStateToUrl(this.state).then(() => this.updateFullLink());
     const result = await this.engine
       .run(JSON.stringify(this.state.doc), this.state.params)
       .catch((error: Error) => {
@@ -209,7 +273,7 @@ class App {
     if (!this.firstRunDone) {
       this.firstRunDone = true;
       this.hideOverlay();
-      if (!tourSeen()) window.setTimeout(() => this.tour.start(), 400);
+      if (!tourSeen() && !EMBED) window.setTimeout(() => this.tour.start(), 400);
     }
   }
 
@@ -393,6 +457,7 @@ class App {
     this.state = { doc, params: { ...DEFAULT_PARAMS }, preset: null };
     element<HTMLSelectElement>("preset-select").value = "";
     element("preset-description").textContent = doc.description ?? file.name;
+    this.showTryHint(null);
     this.editor.setDocument(doc);
     this.syncParamInputs();
     await this.runAndRender();
@@ -547,6 +612,11 @@ class App {
     if (text) download(text, "evolution.svg", "image/svg+xml");
   }
 
+  async downloadWl(): Promise<void> {
+    const text = await this.engine.wl();
+    if (text) download(text, "evolution.wl", "text/plain");
+  }
+
   async downloadPng(): Promise<void> {
     const blob = await this.view.exportPng();
     if (blob) downloadBlob(blob, "evolution.png");
@@ -610,6 +680,7 @@ function downloadBlob(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
+if (EMBED) document.body.classList.add("embed");
 const app = new App();
 element("run-button").addEventListener("click", () => void app.runAndRender());
 element("cancel-button").addEventListener("click", () => app.cancel());
@@ -668,6 +739,7 @@ element("graph-host").addEventListener("keydown", (event) => {
   event.preventDefault();
 });
 element("export-svg").addEventListener("click", () => app.downloadSvg());
+element("export-wl").addEventListener("click", () => void app.downloadWl());
 element("export-png").addEventListener("click", () => void app.downloadPng());
 element("export-json").addEventListener("click", () => app.downloadJson());
 void app.boot();

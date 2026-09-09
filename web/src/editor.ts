@@ -322,7 +322,10 @@ export class MachineEditor {
         cell.textContent = problem;
       }
     });
-    this.root.append(table);
+    const scroller = window.document.createElement("div");
+    scroller.className = "rule-scroll";
+    scroller.append(table);
+    this.root.append(scroller);
 
     const hint = window.document.createElement("p");
     hint.className = "muted small hint";

@@ -91,7 +91,8 @@ export type RunResult = RunOk | RunProblems;
 export type WorkerRequest =
   | { type: "init"; wheelUrl: string }
   | { type: "run"; id: number; doc: string; params: string }
-  | { type: "branchial"; id: number; step: number };
+  | { type: "branchial"; id: number; step: number }
+  | { type: "wl"; id: number };
 
 /** Messages out of the worker. */
 export type WorkerResponse =

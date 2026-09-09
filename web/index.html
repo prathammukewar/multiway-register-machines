@@ -5,7 +5,42 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Multiway Register Machine Explorer</title>
 <meta name="description"
-      content="Explore multiway register machine evolutions in the browser. The same Python engine that backs the paper runs here through Pyodide.">
+      content="Every path a nondeterministic register machine can take, drawn and counted in your browser: evolution graphs, exact path counts, and halting probabilities.">
+<link rel="canonical" href="https://prathammukewar.github.io/multiway-register-machines/">
+<meta name="theme-color" content="#2a78d6">
+<link rel="icon" type="image/svg+xml" href="static/favicon.svg">
+<link rel="apple-touch-icon" href="static/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Multiway Register Machine Explorer">
+<meta property="og:title" content="Multiway Register Machine Explorer">
+<meta property="og:description"
+      content="Every path a nondeterministic register machine can take, drawn and counted in your browser. Evolution graphs, exact path counts, halting probabilities.">
+<meta property="og:url" content="https://prathammukewar.github.io/multiway-register-machines/">
+<meta property="og:image" content="https://prathammukewar.github.io/multiway-register-machines/static/social-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A multiway evolution graph next to the explorer's name">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Multiway Register Machine Explorer">
+<meta name="twitter:description"
+      content="Every path a nondeterministic register machine can take, drawn and counted in your browser.">
+<meta name="twitter:image" content="https://prathammukewar.github.io/multiway-register-machines/static/social-card.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Multiway Register Machine Explorer",
+  "url": "https://prathammukewar.github.io/multiway-register-machines/",
+  "applicationCategory": "EducationalApplication",
+  "operatingSystem": "Any",
+  "browserRequirements": "Requires JavaScript and WebAssembly",
+  "description": "Every path a nondeterministic register machine can take, drawn and counted in the browser: evolution graphs, exact path counts, and halting probabilities.",
+  "author": {"@type": "Person", "name": "Pratham Mukewar"},
+  "license": "https://opensource.org/licenses/MIT",
+  "isBasedOn": "https://community.wolfram.com/groups/-/m/t/3499350",
+  "sameAs": "https://github.com/prathammukewar/multiway-register-machines"
+}
+</script>
 <link rel="stylesheet" href="static/styles.css">
 </head>
 <body>
@@ -25,9 +60,10 @@
     <div class="masthead-text">
       <h1>Multiway Register Machine Explorer</h1>
       <p class="tagline">
-        Every graph on this page is computed by the same
-        <a href="https://github.com/prathammukewar/multiway-register-machines">Python engine</a>
-        the paper uses, running in your browser through Pyodide.
+        Watch a register machine take every path at once. Evolution graphs,
+        exact path counts, and halting odds, computed in your browser by the
+        <a href="https://github.com/prathammukewar/multiway-register-machines"
+           data-tip="The same Python package the paper uses, running here through Pyodide. Nothing is reimplemented in JavaScript.">paper's own Python engine</a>.
       </p>
     </div>
   </div>
@@ -54,6 +90,7 @@
       <select id="preset-select" aria-label="Preset machine"></select>
     </label>
     <p id="preset-description" class="muted small"></p>
+    <p id="preset-try" class="try-hint" hidden></p>
     <div id="editor-host"></div>
     <details id="diagrams" hidden>
       <summary data-tip="The program drawn the way the paper draws it, as instruction boxes and as a control circle.">Program diagrams</summary>
@@ -113,6 +150,8 @@
         <button id="zoom-in" class="quiet" aria-label="Zoom in" data-tip="Zoom in (plus key with the graph focused)">+</button>
         <button id="zoom-fit" class="quiet" aria-label="Fit the whole graph" data-tip="Fit the graph to the pane (0 key with the graph focused)">fit</button>
       </span>
+      <a id="open-full" class="open-full" href="./" target="_blank" rel="noopener"
+         data-tip="Open this machine in the full explorer, with the editor and statistics.">open the full explorer</a>
     </div>
     <ul id="rule-legend" class="legend rule-legend" aria-label="Rules by color" hidden></ul>
     <div id="graph-host" class="graph-host" tabindex="0"
@@ -176,6 +215,7 @@
       <button id="export-svg" class="quiet" data-tip="Download the graph as it looks now, as a vector SVG file.">SVG</button>
       <button id="export-png" class="quiet" data-tip="Download the graph as it looks now, as a PNG image at double resolution.">PNG</button>
       <button id="export-json" class="quiet" data-tip="Download the full evolution (states, arrows, layers, path counts) as JSON.">JSON</button>
+      <button id="export-wl" class="quiet" data-tip="Download the evolution as a Wolfram Language association, laid out the way MultiwayRegisterMachine reports it.">WL</button>
     </div>
     <p class="muted small">
       The URL always encodes the current machine and settings, so copying the

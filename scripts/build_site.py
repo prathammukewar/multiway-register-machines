@@ -21,10 +21,10 @@ def main() -> None:
     out = Path(sys.argv[1]) if len(sys.argv) > 1 else WEB / "dist"
     if not (WEB / "js" / "main.js").exists():
         raise SystemExit("error: compile the TypeScript first (npm run build in web/)")
-    wheels = sorted((ROOT / "dist").glob("mrm-*-py3-none-any.whl"))
+    wheels = list((ROOT / "dist").glob("*-py3-none-any.whl"))
     if not wheels:
         raise SystemExit("error: no wheel in dist/; run python -m build first")
-    wheel = wheels[-1]
+    wheel = max(wheels, key=lambda path: path.stat().st_mtime)
 
     if out.exists():
         shutil.rmtree(out)

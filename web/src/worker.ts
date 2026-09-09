@@ -17,6 +17,7 @@ import json
 from mrm import Config, evolve
 from mrm.analysis import absorption, absorption_time_distribution
 from mrm.counting import strongly_connected_components, successor_lists
+from mrm.export import to_wl
 from mrm.figures import circle_plot_svg, rule_plot_svg
 from mrm.graph import branchial_graph
 from mrm.layout import layered_layout
@@ -106,6 +107,11 @@ def mrm_branchial(step):
     except ValueError:
         return json.dumps({"ok": True, "edges": []})
     return json.dumps({"ok": True, "edges": [[a, b] for a, b, _ in graph.edges]})
+
+def mrm_wl():
+    if LAST is None:
+        return json.dumps({"ok": False, "text": ""})
+    return json.dumps({"ok": True, "text": to_wl(LAST)})
 `;
 
 interface PyProxy {
@@ -120,6 +126,7 @@ interface Pyodide {
 
 let runFn: PyProxy | null = null;
 let branchialFn: PyProxy | null = null;
+let wlFn: PyProxy | null = null;
 
 async function init(wheelUrl: string): Promise<void> {
   ctx.postMessage({ type: "status", stage: "loading-pyodide" });
@@ -132,6 +139,7 @@ async function init(wheelUrl: string): Promise<void> {
   pyodide.runPython(GLUE);
   runFn = pyodide.globals.get("mrm_run");
   branchialFn = pyodide.globals.get("mrm_branchial");
+  wlFn = pyodide.globals.get("mrm_wl");
   ctx.postMessage({ type: "status", stage: "ready" });
 }
 
@@ -148,6 +156,10 @@ ctx.onmessage = (event: MessageEvent<WorkerRequest>) => {
       } else if (message.type === "branchial") {
         if (!branchialFn) throw new Error("engine is not ready yet");
         const payload = branchialFn(message.step) as string;
+        ctx.postMessage({ type: "result", id: message.id, payload });
+      } else if (message.type === "wl") {
+        if (!wlFn) throw new Error("engine is not ready yet");
+        const payload = wlFn() as string;
         ctx.postMessage({ type: "result", id: message.id, payload });
       }
     } catch (error) {

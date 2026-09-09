@@ -186,6 +186,7 @@ export class StatsPane {
     }
 
     this.root.append(sectionTitle("Growth"), this.growthChart(evolution.growth_series));
+    if (evolution.growth_series.length >= 4) this.root.append(oeisLink(evolution.growth_series));
 
     const counts = Object.entries(evolution.path_counts);
     if (counts.length) {
@@ -389,6 +390,21 @@ export class StatsPane {
     });
     return svg;
   }
+}
+
+/** A search link for the growth series, for anyone who recognizes it. */
+function oeisLink(series: number[]): HTMLElement {
+  const paragraph = document.createElement("p");
+  paragraph.className = "muted small oeis";
+  const link = document.createElement("a");
+  link.href = `https://oeis.org/search?q=${series.join(",")}`;
+  link.target = "_blank";
+  link.rel = "noopener";
+  link.textContent = "look this series up in the OEIS";
+  link.dataset["tip"] =
+    "Search the On-Line Encyclopedia of Integer Sequences for the growth series. Opens in a new tab.";
+  paragraph.append(link);
+  return paragraph;
 }
 
 function sectionTitle(text: string): HTMLHeadingElement {

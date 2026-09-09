@@ -101,4 +101,12 @@ export class EngineClient {
     const data = JSON.parse(payload) as { ok: boolean; edges: [number, number][] };
     return data.ok ? data.edges : [];
   }
+
+  /** The last evolution as Wolfram Language text, or null before any run. */
+  async wl(): Promise<string | null> {
+    await this.whenReady();
+    const payload = await this.request({ type: "wl" });
+    const data = JSON.parse(payload) as { ok: boolean; text: string };
+    return data.ok ? data.text : null;
+  }
 }

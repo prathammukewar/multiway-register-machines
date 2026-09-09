@@ -3,29 +3,47 @@ requires = ["hatchling>=1.26"]
 build-backend = "hatchling.build"
 
 [project]
-name = "mrm"
+name = "multiway-register-machines"
 version = "0.1.0"
-description = "Multiway register machine evolution: engine, presets, and analysis"
+description = "Nondeterministic (multiway) register machines: evolution graphs, exact path counts and halting probabilities, and a browser explorer"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
 authors = [{ name = "Pratham Mukewar" }]
-keywords = ["register machine", "multiway system", "computational irreducibility"]
+keywords = [
+    "register machine",
+    "multiway system",
+    "nondeterminism",
+    "computability",
+    "recursive functions",
+    "Collatz",
+    "Fibonacci",
+    "Wolfram",
+    "computational irreducibility",
+]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Education",
     "Typing :: Typed",
 ]
 dependencies = []
 
 [project.urls]
+Homepage = "https://prathammukewar.github.io/multiway-register-machines/"
 Repository = "https://github.com/prathammukewar/multiway-register-machines"
+Documentation = "https://github.com/prathammukewar/multiway-register-machines#readme"
+Changelog = "https://github.com/prathammukewar/multiway-register-machines/blob/main/CHANGELOG.md"
+Issues = "https://github.com/prathammukewar/multiway-register-machines/issues"
+Article = "https://community.wolfram.com/groups/-/m/t/3499350"
 
 [project.scripts]
 mrm = "mrm.cli:main"
