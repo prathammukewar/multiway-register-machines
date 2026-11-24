@@ -21,3 +21,7 @@ First public release.
   Pyodide, with step playback, selection tracing, rule-colored graphs,
   hover explanations, a walkthrough, permalinks, embedding, and SVG, PNG,
   JSON, and Wolfram Language export.
+- Presets draw at once from a run the site build stores (computed by the
+  same `mrm.web.run` the page's worker calls), open by name with short
+  links such as `#fibonacci`, and still open if the Python runtime cannot
+  load. The page works on a phone: the graph comes first at a usable size.

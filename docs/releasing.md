@@ -44,3 +44,5 @@ them with PyPI trusted publishing, so no token is stored in the repository.
 
 6. Confirm the upload at https://pypi.org/project/multiway-register-machines/
    and that `pip install multiway-register-machines` pulls the new version.
+7. After the first upload, change the install line in the README to
+   `pip install multiway-register-machines`.

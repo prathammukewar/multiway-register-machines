@@ -8,8 +8,16 @@ import { GraphView, type HoverTarget } from "./graphview.js";
 import { StatsPane } from "./stats.js";
 import { Tooltip } from "./tooltip.js";
 import { Tour, tourSeen } from "./tour.js";
-import type { AppState, MachineDoc, PresetInfo, RuleJson, RunOk, RunParams } from "./types.js";
-import { decodeState, writeStateToUrl } from "./urlstate.js";
+import type {
+  AppState,
+  MachineDoc,
+  PresetInfo,
+  RuleJson,
+  RunOk,
+  RunParams,
+  RunResult,
+} from "./types.js";
+import { decodeState, presetNameFromHash, writeStateToUrl } from "./urlstate.js";
 
 function element<T extends HTMLElement>(id: string): T {
   const found = document.getElementById(id);
@@ -95,7 +103,19 @@ class App {
   private index: RunIndex | null = null;
   private playTimer: number | null = null;
   private branchialOn = false;
-  private firstRunDone = false;
+  private firstPaintDone = false;
+  private stage: EngineStage = "loading-pyodide";
+  private stageDetail: string | undefined;
+  /** True while the machine is exactly a preset's file, untouched. */
+  private docPristine = false;
+  /** True while the graph on screen is a preset's precomputed run. */
+  private precomputedShown = false;
+  private runTicket = 0;
+  /** The preset this machine started from, kept through edits so the
+   * closed-form line still shows whenever the edited machine satisfies it. */
+  private basePreset: string | null = null;
+  /** True once the engine has failed to start; presets still open without it. */
+  private engineDown = false;
 
   constructor() {
     this.engine = new EngineClient(
@@ -106,13 +126,14 @@ class App {
     this.view = new GraphView(
       element("graph-host"),
       (node) => {
-        if (this.lastRun) this.stats.show(this.lastRun, this.state.preset, node);
+        if (this.lastRun) this.stats.show(this.lastRun, this.basePreset, node);
       },
       (target, event) => this.showGraphTip(target, event),
     );
     this.editor = new MachineEditor(element("editor-host"), this.state.doc, {
       onChange: () => {
         this.state.preset = this.state.preset === "custom" ? "custom" : null;
+        this.docPristine = false;
         void this.runAndRender();
       },
       onHoverRule: (id) => this.view.highlightRule(id),
@@ -129,32 +150,64 @@ class App {
     this.presets = (await fetchJson("public/presets/manifest.json")) as PresetInfo[];
     this.fillPresetDropdown();
 
-    window.addEventListener("hashchange", () => void this.applyHash());
-    const fromUrl = await decodeState(location.hash);
-    if (fromUrl) {
-      this.applyState(fromUrl);
-      await this.runAndRender();
-    } else {
-      await this.loadPreset("fibonacci");
+    window.addEventListener("hashchange", () => void this.openFromHash(false));
+    await this.openFromHash(true);
+  }
+
+  /** Open whatever the address names: a preset by name (`#fibonacci`), a
+   * full compressed state, or, on first load with neither, the default. */
+  private async openFromHash(initial: boolean): Promise<void> {
+    const name = presetNameFromHash(location.hash);
+    if (name && this.presets.some((preset) => preset.id === name)) {
+      await this.loadPreset(name);
+      return;
     }
+    const state = await decodeState(location.hash);
+    if (state) {
+      this.applyState(state);
+      await this.matchPreset();
+      await this.runAndRender();
+      return;
+    }
+    if (initial) await this.loadPreset("fibonacci");
+  }
+
+  /** A full link may still describe an untouched preset; if so, treat it as
+   * one, which gives it the short address and the instant first draw. */
+  private async matchPreset(): Promise<void> {
+    this.docPristine = false;
+    const id = this.state.preset;
+    if (!id || !this.presets.some((preset) => preset.id === id)) return;
+    try {
+      const doc = await fetchJson(`public/presets/${id}.json`);
+      this.docPristine = canonical(doc) === canonical(this.state.doc);
+    } catch {
+      // Leave it as an edited machine; the full link still reproduces it.
+    }
+  }
+
+  /** The preset name to use as the address, or null for an edited machine. */
+  private shortName(): string | null {
+    const id = this.state.preset;
+    if (!id || !this.docPristine) return null;
+    const params = this.state.params;
+    const untouched =
+      params.mode === DEFAULT_PARAMS.mode &&
+      params.max_steps === DEFAULT_PARAMS.max_steps &&
+      params.max_states === DEFAULT_PARAMS.max_states &&
+      params.max_frontier === DEFAULT_PARAMS.max_frontier;
+    return untouched ? id : null;
   }
 
   private applyState(state: AppState): void {
     this.state = state;
+    this.basePreset = state.preset;
     this.state.params.analyze = true;
     element<HTMLSelectElement>("preset-select").value = this.state.preset ?? "";
     element("preset-description").textContent = this.state.doc.description ?? "";
     this.showTryHint(this.state.preset);
     this.editor.setDocument(this.state.doc);
     this.syncParamInputs();
-  }
-
-  /** A pasted or back/forward link changes the hash without a reload. */
-  private async applyHash(): Promise<void> {
-    const state = await decodeState(location.hash);
-    if (!state) return;
-    this.applyState(state);
-    await this.runAndRender();
   }
 
   private fillPresetDropdown(): void {
@@ -178,6 +231,8 @@ class App {
   private async loadPreset(id: string): Promise<void> {
     const doc = (await fetchJson(`public/presets/${id}.json`)) as MachineDoc;
     this.state = { doc, params: { ...DEFAULT_PARAMS }, preset: id };
+    this.docPristine = true;
+    this.basePreset = id;
     element<HTMLSelectElement>("preset-select").value = id;
     element("preset-description").textContent = doc.description ?? "";
     this.showTryHint(id);
@@ -224,7 +279,12 @@ class App {
     this.readParamInputs();
     this.stopPlayback();
     this.tooltip.hide();
-    void writeStateToUrl(this.state).then(() => this.updateFullLink());
+    const ticket = ++this.runTicket;
+    const short = this.shortName();
+    void writeStateToUrl(this.state, short).then(() => this.updateFullLink());
+    // An untouched preset can be drawn at once from the run the site build
+    // stored for it; the engine catches up underneath.
+    if (short && !this.engine.isReady) await this.showPrecomputed(short, ticket);
     const result = await this.engine
       .run(JSON.stringify(this.state.doc), this.state.params)
       .catch((error: Error) => {
@@ -235,23 +295,49 @@ class App {
         }
         return null;
       });
-    if (!result) return;
+    // A newer run was asked for while this one was in flight; let it win.
+    if (!result || ticket !== this.runTicket) return;
     if (!result.ok) {
       this.editor.setProblems(result.problems);
       this.stats.clear("Fix the highlighted problems and the graph will come back.");
       return;
     }
     this.editor.setProblems([]);
+    if (this.precomputedShown && this.lastRun && sameEvolution(result, this.lastRun)) {
+      // The engine agrees with what is on screen: keep the view as it is.
+      this.precomputedShown = false;
+      this.lastRun = result;
+      this.index = buildIndex(result);
+      if (this.branchialOn) void this.refreshBranchial();
+      return;
+    }
+    this.precomputedShown = false;
+    this.render(result);
+  }
+
+  private async showPrecomputed(id: string, ticket: number): Promise<void> {
+    try {
+      const stored = (await fetchJson(`public/runs/${id}.json`)) as RunResult;
+      // The engine may have come up, or the user moved on, while this loaded.
+      if (!stored.ok || this.engine.isReady || ticket !== this.runTicket) return;
+      this.render(stored);
+      this.precomputedShown = true;
+    } catch {
+      // No stored run for this preset: the engine draws it when it is ready.
+    }
+  }
+
+  private render(result: RunOk): void {
     this.lastRun = result;
     this.index = buildIndex(result);
     this.renderDiagrams(result);
     this.view.setEvolution(result.evolution, result.layout);
     this.editor.setRuleColors(this.view.ruleColors());
     this.renderRuleLegend();
-    this.stats.show(result, this.state.preset, null);
+    this.stats.show(result, this.basePreset, null);
     this.renderTable(result);
     this.setupSlider(result);
-    if (this.branchialOn) await this.refreshBranchial();
+    if (this.branchialOn) void this.refreshBranchial();
 
     const evolution = result.evolution;
     if (evolution.truncated) {
@@ -268,11 +354,12 @@ class App {
     } else {
       this.hideBanner();
     }
+    if (this.engineDown) this.showEngineDown();
     element("canvas-note").hidden = !this.view.usingCanvas;
 
-    if (!this.firstRunDone) {
-      this.firstRunDone = true;
-      this.hideOverlay();
+    if (!this.firstPaintDone) {
+      this.firstPaintDone = true;
+      this.showStage(this.stage, this.stageDetail);
       if (!tourSeen() && !EMBED) window.setTimeout(() => this.tour.start(), 400);
     }
   }
@@ -455,6 +542,8 @@ class App {
       return;
     }
     this.state = { doc, params: { ...DEFAULT_PARAMS }, preset: null };
+    this.docPristine = false;
+    this.basePreset = null;
     element<HTMLSelectElement>("preset-select").value = "";
     element("preset-description").textContent = doc.description ?? file.name;
     this.showTryHint(null);
@@ -542,22 +631,31 @@ class App {
   }
 
   private showStage(stage: EngineStage, detail?: string): void {
+    this.stage = stage;
+    this.stageDetail = detail;
     const overlay = element("engine-status");
     const busy = element("engine-busy");
     const runButton = element<HTMLButtonElement>("run-button");
     const cancelButton = element<HTMLButtonElement>("cancel-button");
     const working = stage === "working";
+    const loading = stage === "loading-pyodide" || stage === "loading-engine";
     runButton.disabled = working;
     runButton.textContent = working ? "running" : "run";
     cancelButton.disabled = !working;
-    busy.hidden = !working || !this.firstRunDone;
 
-    if (stage === "ready" && this.firstRunDone) {
+    if (this.firstPaintDone) {
+      // A graph is on screen: never cover it, just say what the engine is doing.
       overlay.hidden = true;
+      busy.hidden = !(working || loading);
+      element("engine-busy-text").textContent = loading ? "starting the engine" : "evolving";
+      if (stage === "failed") {
+        this.engineDown = true;
+        this.showEngineDown();
+      }
       return;
     }
+    busy.hidden = true;
     if (stage === "ready") return;
-    if (working && this.firstRunDone) return;
 
     overlay.hidden = false;
     overlay.classList.toggle("error", stage === "failed");
@@ -578,8 +676,15 @@ class App {
     }
   }
 
-  private hideOverlay(): void {
-    element("engine-status").hidden = true;
+  /** Say plainly that the engine is unavailable, without the Python traceback. */
+  private showEngineDown(): void {
+    const lines = (this.stageDetail ?? "").trim().split("\n");
+    const reason = (lines[lines.length - 1] ?? "").slice(0, 120);
+    this.showBanner(
+      "The Python engine could not start, so edits will not run. The presets still open, " +
+        `and reloading the page usually fixes it.${reason ? ` (${reason})` : ""}`,
+      "error",
+    );
   }
 
   private showBanner(text: string, kind: "warning" | "error"): void {
@@ -639,6 +744,40 @@ function buildIndex(result: RunOk): RunIndex {
   return { layerOf, incoming, outgoing, ruleById };
 }
 
+/** Whether two runs describe the same evolution, state for state. */
+function sameEvolution(a: RunOk, b: RunOk): boolean {
+  return JSON.stringify(a.evolution) === JSON.stringify(b.evolution);
+}
+
+/** JSON with object keys sorted, so two documents compare by content. */
+function canonical(value: unknown): string {
+  return JSON.stringify(value, (_key, inner: unknown) => {
+    if (inner === null || typeof inner !== "object" || Array.isArray(inner)) return inner;
+    const entries = Object.entries(inner as Record<string, unknown>);
+    entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return Object.fromEntries(entries);
+  });
+}
+
+/** On a narrow screen the graph comes first, so the preset picker moves to
+ * sit above it and the preset's description sits right under it. */
+function placePresetControls(): void {
+  if (EMBED) return;
+  const narrow = window.matchMedia("(max-width: 960px)");
+  const row = element("preset-row");
+  const about = element("preset-about");
+  const apply = (): void => {
+    if (narrow.matches) {
+      element("graph-pane").prepend(row);
+      element("graph-host").after(about);
+    } else {
+      element("editor-host").before(row, about);
+    }
+  };
+  narrow.addEventListener("change", apply);
+  apply();
+}
+
 function push(map: Map<number, string[]>, key: number, value: string): void {
   const list = map.get(key);
   if (list) list.push(value);
@@ -681,6 +820,7 @@ function downloadBlob(blob: Blob, filename: string): void {
 }
 
 if (EMBED) document.body.classList.add("embed");
+placePresetControls();
 const app = new App();
 element("run-button").addEventListener("click", () => void app.runAndRender());
 element("cancel-button").addEventListener("click", () => app.cancel());

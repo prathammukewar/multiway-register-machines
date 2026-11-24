@@ -40,7 +40,16 @@ export async function decodeState(hash: string): Promise<AppState | null> {
   }
 }
 
-export async function writeStateToUrl(state: AppState): Promise<void> {
-  const encoded = await encodeState(state);
-  history.replaceState(null, "", "#" + encoded);
+/** Put the state in the address bar. A preset that has not been changed
+ * gets a short link by name (`#fibonacci`); anything else carries the whole
+ * machine, compressed, so the link reproduces it exactly. */
+export async function writeStateToUrl(state: AppState, shortName: string | null): Promise<void> {
+  const fragment = shortName ?? (await encodeState(state));
+  history.replaceState(null, "", "#" + fragment);
+}
+
+/** The hash as a preset name, if it looks like one. */
+export function presetNameFromHash(hash: string): string | null {
+  const text = hash.replace(/^#/, "");
+  return /^[a-z][a-z0-9_]{0,40}$/.test(text) ? text : null;
 }

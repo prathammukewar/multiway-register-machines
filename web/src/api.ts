@@ -67,6 +67,11 @@ export class EngineClient {
     this.start();
   }
 
+  /** True once the Python runtime and the package have loaded. */
+  get isReady(): boolean {
+    return this.ready;
+  }
+
   private whenReady(): Promise<void> {
     if (this.ready) return Promise.resolve();
     return new Promise((resolve) => this.readyWaiters.push(resolve));

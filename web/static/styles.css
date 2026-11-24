@@ -187,11 +187,6 @@ a:hover { text-decoration-thickness: 2px; }
   padding: 0 24px 20px;
 }
 
-@media (max-width: 960px) {
-  .panes { grid-template-columns: 1fr; }
-  .graph-host { min-height: 60vh; }
-}
-
 .pane {
   background: var(--pane);
   border: 1px solid var(--border);
@@ -427,6 +422,7 @@ button.quiet:hover { background: var(--accent-softer); border-color: var(--accen
 .engine-status.error .loading-steps { display: none; }
 
 .engine-busy {
+  cursor: help;
   position: absolute;
   top: 10px;
   right: 10px;
@@ -912,6 +908,30 @@ body.embed .graph-host { min-height: 320px; }
 
 @media (prefers-reduced-motion: reduce) {
   .tooltip, .tour-card { animation: none; }
+}
+
+/* Narrow screens: the page scrolls like a normal page, the graph comes
+   first at a usable height, then the numbers, then the editor. */
+@media (max-width: 960px) {
+  html, body { height: auto; min-height: 100%; }
+  .topbar { padding: 14px 14px 10px; gap: 8px 12px; }
+  .topbar h1 { font-size: 19px; }
+  .tagline { font-size: 12.5px; }
+  .top-links { margin-left: 0; display: flex; flex-wrap: wrap; gap: 2px; font-size: 12px; }
+  .top-links a { margin-left: 0; padding: 3px 6px; white-space: nowrap; }
+  .banner { margin: 0 12px 10px; }
+  .panes { display: flex; flex-direction: column; flex: none; gap: 12px; padding: 0 12px 16px; }
+  .pane { overflow: visible; padding: 14px; }
+  .pane-graph { order: 1; padding: 12px; }
+  .pane-stats { order: 2; }
+  .pane-editor { order: 3; }
+  .graph-host { flex: none; height: 58vh; min-height: 320px; }
+  .graph-toolbar { gap: 8px 12px; }
+  .pane-graph > .preset-row { margin: 2px 0 10px; }
+  .pane-graph > #preset-about { margin-top: 10px; }
+  .pane-graph > #preset-about p:first-child { margin-top: 0; }
+  .table-host { max-height: 50vh; }
+  .engine-busy { top: auto; bottom: 8px; right: 8px; }
 }
 
 /* The hidden attribute must always win, whatever display a class sets. */

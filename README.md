@@ -31,20 +31,20 @@ trace where it came from.
 
 <table>
 <tr>
-<td width="33%" valign="top"><a href="https://prathammukewar.github.io/multiway-register-machines/#jVLLTsMwEPyVlU-tZJUklXqI4Iz4Ag5VFbnxklj4JXuNKFX_nXUCBw4gctodT2bGu74KHUbRX0UeZ3RK9MIld-fUOBuPd62QwiuHDD8moyEqmjNjGvOYTCQTPB89K_sKLyk42DQSmi1QgM1ewn4L5wsUbwgyYcyQzDQThAQl7uDJM6oIM7igEWjGRR7GUDxViYoQJme8smAynI0Pzii7OSzSD9A1u5pvSDgZNkhZ9J0UqVjk6ngVRnO4xZNpcRxqRNG3UkxFJb1Q-NcFCZGp90x7U7bwdfe3kxQl6prvB1GjJZ5SW89ZkkKt5ZdXiX8bdf816n4x4npWloY4VjJ3hofLI-GmlcdGNqfTjekqKZfrUutk2W-dM5s69T4sqxD9ofluV-uu4W-FOL4ng4kdV1DxBi4frESpYDVImJFYeOJHMayP4vYJ"><img src="docs/figures/grid-paths.svg" alt="States graph of the grid-paths machine"></a></td>
-<td width="33%" valign="top"><a href="https://prathammukewar.github.io/multiway-register-machines/#tVLLasMwEPyVRacGnNZ2aQqB9tgv6K2EsJE3sYglGWndV8i_d-QQaD-gPki7M6Md7Von00Vr1ieTbS-ezdr45O88294FuWtMZQJ7AfzidjGwtY6S2CllFwPITrJNbtSSQXNzXNDymbAvm0U17-2CPpz2tOMsZLFkYqUjPVFDHLo5am_ptRfKygr6kHjsyUFHAy5BcU9tTSHCq6IvUVJow-R3kgrXuawuWKWRtc-kceZ_2aHSy01bL2C0elw93JaetkkOOCcpm3VTmTQNgujtZFyHPval79Fu9yn6mT9MnLqZx7kZiSN0z0_QvfMwYUD3501lprErLfxRdjIo5rpsigBFNQI-V1er9h-s2j9WiHsedDvaokbmglPHA5KmemvrzeYMNSf2uTwEj0HD8PIzYOr5c4tJjSBX9TW9WLc1vguE-wd1kmB4ATnw8PWNSpomKQZJsmjp-PqQzPkH"><img src="docs/figures/fibonacci-dag.svg" alt="States graph of the Fibonacci machine"></a></td>
-<td width="33%" valign="top"><a href="https://prathammukewar.github.io/multiway-register-machines/#rZXditswEIVfZdBNd6m6azmO4wS2UPoKvTMhaG0lEUiykeTdZkPevSPnxzZNizckF2E0mvnOHCGsPSmrgiz2xBVboTlZEG31s-bFVhrxzAglhmuB6Z-VUtx_wINulJfvfEdhbSsNfiug5rWwj1hbCldYWXtZGWz5dd764uDcfiI_wQ8PAmOoykoLLyw4z72Ah7qADN6l34IVG-nCDgOha797BOnh1XKDkzrwFbxWWBX0Jwa-YhU3ZbvccvUmzQacKMIkFDbCCMt9yHGlQBqkKsFDkXsKFldnLUcWMSW2UQKjfE9kiT4kc-Eg6mIVHJMFo2TTcFu2FdjZ9lQ1Vn7HsjeuGjyw6LCkpKlLNOUGhaVQHs_5GwsFyPQVpg_0orUeqfXy8k-xDpx14HhoIu7A1wZll0H7c0463GSIm9yCSzpcMsQlt-BYh5sOcdNbcGmHS4e49O4XYNbTWo_U-uwFmA1NzO5uYtrTWo_U-qyJbGgi-wvMxppg103Me1rrkVqjTCR9cHxHcO-ezoenM___tY-vXvssxPgJ9au6OAlJ47xt2o9pyOQxZTSPlzTPlvjHaETzySVKLhG7RGmI2q7ZuatdTTsGruYYJPRUG7U7rbj0kivUzWge0elyecBZueXahXdLV2V4ntrXw6F5zX-v8Ete42YanZdH33GEv2MKz8d4KSxaPya54Wr3gSQ0KoKAFU54BBfHh4sc_gA"><img src="docs/figures/collatz-multiway.svg" alt="States graph of the paper's multiway Collatz machine"></a></td>
+<td width="33%" valign="top"><a href="https://prathammukewar.github.io/multiway-register-machines/#grid_paths"><img src="docs/figures/grid-paths.svg" alt="States graph of the grid-paths machine"></a></td>
+<td width="33%" valign="top"><a href="https://prathammukewar.github.io/multiway-register-machines/#fibonacci"><img src="docs/figures/fibonacci-dag.svg" alt="States graph of the Fibonacci machine"></a></td>
+<td width="33%" valign="top"><a href="https://prathammukewar.github.io/multiway-register-machines/#collatz"><img src="docs/figures/collatz-multiway.svg" alt="States graph of the paper's multiway Collatz machine"></a></td>
 </tr>
 <tr>
-<td valign="top"><a href="https://prathammukewar.github.io/multiway-register-machines/#jVLLTsMwEPyVlU-tZJUklXqI4Iz4Ag5VFbnxklj4JXuNKFX_nXUCBw4gctodT2bGu74KHUbRX0UeZ3RK9MIld-fUOBuPd62QwiuHDD8moyEqmjNjGvOYTCQTPB89K_sKLyk42DQSmi1QgM1ewn4L5wsUbwgyYcyQzDQThAQl7uDJM6oIM7igEWjGRR7GUDxViYoQJme8smAynI0Pzii7OSzSD9A1u5pvSDgZNkhZ9J0UqVjk6ngVRnO4xZNpcRxqRNG3UkxFJb1Q-NcFCZGp90x7U7bwdfe3kxQl6prvB1GjJZ5SW89ZkkKt5ZdXiX8bdf816n4x4npWloY4VjJ3hofLI-GmlcdGNqfTjekqKZfrUutk2W-dM5s69T4sqxD9ofluV-uu4W-FOL4ng4kdV1DxBi4frESpYDVImJFYeOJHMayP4vYJ">Grid paths</a>. Walk from (0, 0) to (3, 3) by unit steps. Sixteen states, and exactly C(6, 3) = 20 paths through them.</td>
-<td valign="top"><a href="https://prathammukewar.github.io/multiway-register-machines/#tVLLasMwEPyVRacGnNZ2aQqB9tgv6K2EsJE3sYglGWndV8i_d-QQaD-gPki7M6Md7Von00Vr1ieTbS-ezdr45O88294FuWtMZQJ7AfzidjGwtY6S2CllFwPITrJNbtSSQXNzXNDymbAvm0U17-2CPpz2tOMsZLFkYqUjPVFDHLo5am_ptRfKygr6kHjsyUFHAy5BcU9tTSHCq6IvUVJow-R3kgrXuawuWKWRtc-kceZ_2aHSy01bL2C0elw93JaetkkOOCcpm3VTmTQNgujtZFyHPval79Fu9yn6mT9MnLqZx7kZiSN0z0_QvfMwYUD3501lprErLfxRdjIo5rpsigBFNQI-V1er9h-s2j9WiHsedDvaokbmglPHA5KmemvrzeYMNSf2uTwEj0HD8PIzYOr5c4tJjSBX9TW9WLc1vguE-wd1kmB4ATnw8PWNSpomKQZJsmjp-PqQzPkH">Fibonacci recursion</a>. A line of twenty states that F(20) = 6765 distinct paths run through.</td>
-<td valign="top"><a href="https://prathammukewar.github.io/multiway-register-machines/#rZXditswEIVfZdBNd6m6azmO4wS2UPoKvTMhaG0lEUiykeTdZkPevSPnxzZNizckF2E0mvnOHCGsPSmrgiz2xBVboTlZEG31s-bFVhrxzAglhmuB6Z-VUtx_wINulJfvfEdhbSsNfiug5rWwj1hbCldYWXtZGWz5dd764uDcfiI_wQ8PAmOoykoLLyw4z72Ah7qADN6l34IVG-nCDgOha797BOnh1XKDkzrwFbxWWBX0Jwa-YhU3ZbvccvUmzQacKMIkFDbCCMt9yHGlQBqkKsFDkXsKFldnLUcWMSW2UQKjfE9kiT4kc-Eg6mIVHJMFo2TTcFu2FdjZ9lQ1Vn7HsjeuGjyw6LCkpKlLNOUGhaVQHs_5GwsFyPQVpg_0orUeqfXy8k-xDpx14HhoIu7A1wZll0H7c0463GSIm9yCSzpcMsQlt-BYh5sOcdNbcGmHS4e49O4XYNbTWo_U-uwFmA1NzO5uYtrTWo_U-qyJbGgi-wvMxppg103Me1rrkVqjTCR9cHxHcO-ezoenM___tY-vXvssxPgJ9au6OAlJ47xt2o9pyOQxZTSPlzTPlvjHaETzySVKLhG7RGmI2q7ZuatdTTsGruYYJPRUG7U7rbj0kivUzWge0elyecBZueXahXdLV2V4ntrXw6F5zX-v8Ete42YanZdH33GEv2MKz8d4KSxaPya54Wr3gSQ0KoKAFU54BBfHh4sc_gA">Collatz, multiway</a>. The paper's machine explores the 3n + 1 section and the halving section at every branch point.</td>
+<td valign="top"><a href="https://prathammukewar.github.io/multiway-register-machines/#grid_paths">Grid paths</a>. Walk from (0, 0) to (3, 3) by unit steps. Sixteen states, and exactly C(6, 3) = 20 paths through them.</td>
+<td valign="top"><a href="https://prathammukewar.github.io/multiway-register-machines/#fibonacci">Fibonacci recursion</a>. A line of twenty states that F(20) = 6765 distinct paths run through.</td>
+<td valign="top"><a href="https://prathammukewar.github.io/multiway-register-machines/#collatz">Collatz, multiway</a>. The paper's machine explores the 3n + 1 section and the halving section at every branch point.</td>
 </tr>
 </table>
 
 Two more from the paper: the [reverse Collatz tree](
 https://prathammukewar.github.io/multiway-register-machines/#pVTbitswEP2VQVDYUjcbX9gHw_ZlH_oHfSnBKNZsLJAlo0vSbPC_d2Tn4tzYwBo_SDNHZ87R2LNjwtSs3DFXN9hyVrLWts8trxup8TllCdO8RQq_GaW4_wBvEeHJ4hqtw--UF-hqKzsvjSbYb2s24BuEM3zoNtwKeLemhbQEYcJSIXC9hTVXARNaCghaGMg1_IAUNg3qgWbIg3RQQGsEvAxIvjRrhGIGf4as89yjA25xOFIb_S5XwfIoicIeujpSSt8MeZLLfd2AxZV0Hi1g2_ntLFqtDjHHyixhNiik1d8dk4K8jbIJ19VVtMLKNGGrQM4Is0hY6EQUMm4I4w2x9Mn-dLSX6_TO8R2j0kPEdAT-9vpKwME8K4uEkfegAlG_RL4z6K8JsD9TcQIKVJ56-zPtT8qKozKxVDNliGwiLbsrbVJv_nm9g9rsGMz6W7cTNQij8TEN09u5EHEiz4_ktem2Vw7zK_bsUYfZLYcn29NbvhBxafG-iIcspkd230grrjwW97s4oc8_a2N-o423P6VRxqXL4quNpHXDla-6ep-RWnrJFW3ShN75YtETnFveujjM6HeJM2scDFSh5f8q-q07SqbZ_LAfC2VzesYQqdVeoiXUGOSaq-0HUXkbMFaw6NAPzRymW7Wfg6z_Dw), grown upward from 1, and the
-[polynomial evaluator](https://prathammukewar.github.io/multiway-register-machines/#rVbLbtswEPwVgpcmLZtoSfkJpMeee-jNSAxGomICekGim6SB_7278kOUrQZEEMOwucvVzM7IWvONp1XCl2-8TTam0HzJi6a4LXSysaW5BS54qQuD6V9V_lpWhdU5ky8Pr-wbe2FXWVMVzG0Mq3VtmmusTk2bNLZ2tirxot_HrS8tq3uAAzx73NrcsQ6krp5NI1ib6Fzjty5TptP0hv2kzSsQ7EoKhu-oe6vra2Yd2-jctezZug2TX-WDwqYku2MwZ7ZkjXmyrTMNgxtSsT7GLV9OBG-2ucHV6o3bFBu10JLWOllTN3wJgj9tdZN2FXhld01VY-UPLPuj8y16Eu3uBd_WqXYHqGNhanKHVn4HKkBMV_Gl3IkTVxbIdXf3X7IeGKIeWQ5VyAtkCFUB4yqUx5UFcgWpmPfAaihCXQDLUBFyXETscWWBXEEipj1wPBQR98BjjapTo36fkx5uMoSbvA8Xj8J59246hJteyFahFqtxi2ceVxbIFWSx9xjNhiJm73siRz3x7th8CDe_6DMO9SQe92ThcWWBXGEToAdeDEUs3vcERj3xHkWIzsZi9OmuAPh0WShdmDHeTx7OJzx8xBvwx_jZtAX5IURvfMPZ6IPPn33gDT84G1IQf0iAooD-itd1cvDflq1rtgmdAiizmggQK3kvVhDd0yeFChdziiRFMS6mFCkRidWEVjGt1D6HFTMq3ddHh9qY8gsC3KNGB8QuD0A5ddoB2S-jEy8Qcb-B5V371uE5BTuntgURRgK3dihaN7po6cBUVCmdi1rXmSR4oV_WeL6ocXMaHcO9gTLC1z6FTpfOmoZufJfUpc5f_yISGmaIoDGtcQjcn5f47h8), which halts with 2·2³ + 2 = 18
+[polynomial evaluator](https://prathammukewar.github.io/multiway-register-machines/#polynomial), which halts with 2·2³ + 2 = 18
 in register 1.
 
 ## What a multiway register machine is
@@ -68,17 +68,11 @@ the base cases is F(20) = 6765.
 ## Install
 
 ```bash
-pip install multiway-register-machines
-```
-
-The import name is `mrm`. To run the development version instead:
-
-```bash
 pip install git+https://github.com/prathammukewar/multiway-register-machines
 ```
 
-The core package needs Python 3.10 or newer and nothing else: no NumPy, no
-graph library, no Mathematica.
+The import name is `mrm`. The core package needs Python 3.10 or newer and
+nothing else: no NumPy, no graph library, no Mathematica.
 
 ## Five lines of Python
 
@@ -199,8 +193,13 @@ any mathematics in JavaScript: a Web Worker loads Pyodide, installs the same
 `mrm` wheel that CI builds, and every run on the page goes through the exact
 code in this repository, so the site and the paper cannot disagree.
 
-The page keeps the full machine and every evolution setting in the URL,
-compressed, so any view can be cited by link and reproduced exactly. Step
+A preset opens by name, as in
+[`#fibonacci`](https://prathammukewar.github.io/multiway-register-machines/#fibonacci),
+and draws at once from a run the site build stored, while the Python
+runtime loads underneath. Once a machine is edited the page keeps the whole
+machine and every evolution setting in the URL, compressed, so any view can
+be cited by link and reproduced exactly; `mrm link` prints the same pinned
+form from Python. Step
 playback reveals the evolution layer by layer, hovering a chip or an arrow
 explains it, and selecting a state shows its ancestors, its descendants, and
 the shortest path that reaches it. For machines in instruction form the page

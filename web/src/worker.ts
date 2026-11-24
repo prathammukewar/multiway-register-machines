@@ -1,6 +1,6 @@
 /** The engine worker: loads Pyodide, installs the mrm wheel, and answers
- * run/branchial requests. All mathematics happens in Python; this file only
- * moves JSON strings around. */
+ * run/branchial requests. All mathematics happens in Python (mrm.web builds
+ * every payload); this file only moves JSON strings around. */
 
 import type { WorkerRequest, WorkerResponse } from "./types.js";
 
@@ -14,104 +14,22 @@ const ctx = self as unknown as {
 const GLUE = `
 import json
 
-from mrm import Config, evolve
-from mrm.analysis import absorption, absorption_time_distribution
-from mrm.counting import strongly_connected_components, successor_lists
-from mrm.export import to_wl
-from mrm.figures import circle_plot_svg, rule_plot_svg
-from mrm.graph import branchial_graph
-from mrm.layout import layered_layout
-from mrm.machine import complexity
-from mrm.serialize import evolution_to_json, machine_from_json
+from mrm import web
 
 LAST = None
 
-def _analysis_tractable(ev):
-    # Exact rational solves blow up on large cyclic components; skip the
-    # analysis rather than stall the page.
-    if len(ev.nodes) > 5000:
-        return False
-    succ = successor_lists(ev)
-    return all(
-        len(comp) <= 250
-        for comp in strongly_connected_components(list(ev.nodes), succ)
-    )
-
 def mrm_run(doc_text, params_text):
     global LAST
-    params = json.loads(params_text)
-    try:
-        doc = machine_from_json(json.loads(doc_text))
-    except (ValueError, KeyError, TypeError) as exc:
-        return json.dumps({"ok": False, "problems": [f"machine document: {exc}"]})
-    problems = doc.machine.validate()
-    if problems:
-        return json.dumps({"ok": False, "problems": problems})
-    if doc.initial is None:
-        return json.dumps({"ok": False, "problems": ["no initial configuration set"]})
-    try:
-        ev = evolve(
-            doc.machine,
-            doc.initial,
-            mode=params["mode"],
-            max_steps=int(params["max_steps"]),
-            max_states=int(params["max_states"]),
-            max_frontier=int(params["max_frontier"]),
-        )
-    except ValueError as exc:
-        return json.dumps({"ok": False, "problems": [str(exc)]})
-    LAST = ev
-    payload = {
-        "ok": True,
-        "evolution": evolution_to_json(ev),
-        "layout": {str(n): [x, y] for n, (x, y) in layered_layout(ev).items()},
-    }
-    if params.get("analyze") and _analysis_tractable(ev):
-        try:
-            result = absorption(ev)
-            payload["absorption"] = {
-                "terminals": {
-                    str(n): str(p) for n, p in result.terminal_probabilities.items()
-                },
-                "halting": str(result.halting_probability),
-                "never_halting": str(result.never_halting),
-                "unresolved": str(result.unresolved),
-                "expected_steps": None
-                if result.expected_steps is None
-                else str(result.expected_steps),
-            }
-            horizon = min(4 * len(ev.layers) + 12, 300)
-            dist = absorption_time_distribution(ev, horizon, exact=False)
-            payload["absorption_times"] = {
-                "probabilities": [float(p) for p in dist.probabilities],
-                "tail": float(dist.tail),
-            }
-        except Exception as exc:  # analysis is optional; never sink the run
-            payload["absorption_error"] = str(exc)
-    if doc.machine.instructions is not None:
-        payload["complexity"] = complexity(doc.machine.instructions)
-        if len(doc.machine.instructions) <= 40:
-            payload["rule_plot"] = rule_plot_svg(
-                doc.machine.instructions, doc.machine.n_registers
-            )
-            payload["circle_plot"] = circle_plot_svg(
-                doc.machine.instructions, doc.machine.n_registers
-            )
+    payload, ev = web.run(doc_text, params_text)
+    if ev is not None:
+        LAST = ev
     return json.dumps(payload)
 
 def mrm_branchial(step):
-    if LAST is None:
-        return json.dumps({"ok": False, "edges": []})
-    try:
-        graph = branchial_graph(LAST, int(step))
-    except ValueError:
-        return json.dumps({"ok": True, "edges": []})
-    return json.dumps({"ok": True, "edges": [[a, b] for a, b, _ in graph.edges]})
+    return json.dumps(web.branchial(LAST, step))
 
 def mrm_wl():
-    if LAST is None:
-        return json.dumps({"ok": False, "text": ""})
-    return json.dumps({"ok": True, "text": to_wl(LAST)})
+    return json.dumps(web.wolfram_text(LAST))
 `;
 
 interface PyProxy {

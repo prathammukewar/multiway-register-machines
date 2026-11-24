@@ -84,13 +84,15 @@
 <main class="panes">
   <section class="pane pane-editor" aria-label="Machine editor">
     <h2>Machine</h2>
-    <label class="preset-row"
+    <label class="preset-row" id="preset-row"
            data-tip="Ready-made machines, each showing one phenomenon. Picking one replaces the rules below and re-runs.">
       <span>Preset</span>
       <select id="preset-select" aria-label="Preset machine"></select>
     </label>
-    <p id="preset-description" class="muted small"></p>
-    <p id="preset-try" class="try-hint" hidden></p>
+    <div id="preset-about">
+      <p id="preset-description" class="muted small"></p>
+      <p id="preset-try" class="try-hint" hidden></p>
+    </div>
     <div id="editor-host"></div>
     <details id="diagrams" hidden>
       <summary data-tip="The program drawn the way the paper draws it, as instruction boxes and as a control circle.">Program diagrams</summary>
@@ -132,7 +134,7 @@
     </div>
   </section>
 
-  <section class="pane pane-graph" aria-label="Evolution graph">
+  <section class="pane pane-graph" id="graph-pane" aria-label="Evolution graph">
     <div class="graph-toolbar">
       <button id="play-button"
               data-tip="Reveal the evolution one step at a time. The space bar does the same.">play</button>
@@ -169,8 +171,9 @@
           <p class="muted small">Everything runs in your browser. Nothing is sent anywhere.</p>
         </div>
       </div>
-      <div id="engine-busy" class="engine-busy" role="status" hidden>
-        <span class="spinner-small" aria-hidden="true"></span>evolving
+      <div id="engine-busy" class="engine-busy" role="status" hidden
+           data-tip="The graph already on screen was computed ahead of time by the same Python code. Editing starts working once the runtime has loaded: about 5 MB, kept for next time.">
+        <span class="spinner-small" aria-hidden="true"></span><span id="engine-busy-text">evolving</span>
       </div>
     </div>
     <ul class="legend" aria-label="Legend">
@@ -211,15 +214,15 @@
     <div id="stats-body"></div>
     <h2>Export</h2>
     <div class="button-row">
-      <button id="copy-link" data-tip="Copy a URL that reopens exactly this machine, settings, and view.">copy link</button>
+      <button id="copy-link" data-tip="Copy a link that reopens exactly this machine and these settings.">copy link</button>
       <button id="export-svg" class="quiet" data-tip="Download the graph as it looks now, as a vector SVG file.">SVG</button>
       <button id="export-png" class="quiet" data-tip="Download the graph as it looks now, as a PNG image at double resolution.">PNG</button>
       <button id="export-json" class="quiet" data-tip="Download the full evolution (states, arrows, layers, path counts) as JSON.">JSON</button>
       <button id="export-wl" class="quiet" data-tip="Download the evolution as a Wolfram Language association, laid out the way MultiwayRegisterMachine reports it.">WL</button>
     </div>
     <p class="muted small">
-      The URL always encodes the current machine and settings, so copying the
-      address reproduces this exact view.
+      The address always reopens this view. An untouched preset gets a short
+      link by name; an edited machine carries the whole machine in its link.
     </p>
   </section>
 </main>

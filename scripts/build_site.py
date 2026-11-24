@@ -2,8 +2,8 @@
 
 Expects the TypeScript to be compiled already (``npm run build`` in web/)
 and a wheel to exist in dist/. Copies the page, styles, compiled modules,
-preset machine files, and the wheel, and writes the manifest files the page
-fetches at startup. Usage: python scripts/build_site.py [OUT_DIR]
+preset machine files, each preset's precomputed first run, and the wheel, and
+writes the manifest files the page fetches at startup. Usage: python scripts/build_site.py [OUT_DIR]
 """
 
 import hashlib
@@ -65,6 +65,18 @@ def main() -> None:
             }
         )
     (presets_out / "manifest.json").write_text(json.dumps(manifest, indent=1) + "\n")
+
+    # Each preset's first run, computed here by the same function the page's
+    # worker calls, so the page can draw it before the engine has loaded.
+    from mrm.web import DEFAULT_PARAMS, run
+
+    runs_out = out / "public" / "runs"
+    runs_out.mkdir(parents=True)
+    for name in PRESET_ORDER:
+        payload, _ = run((PRESETS / f"{name}.json").read_text(), json.dumps(DEFAULT_PARAMS))
+        if not payload["ok"]:
+            raise SystemExit(f"error: preset {name} does not run: {payload['problems']}")
+        (runs_out / f"{name}.json").write_text(json.dumps(payload, separators=(",", ":")))
 
     wheels_out = out / "public" / "wheels"
     wheels_out.mkdir(parents=True)
